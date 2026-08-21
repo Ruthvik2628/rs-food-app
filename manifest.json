@@ -1,7 +1,9 @@
 {
+  "id": "./",
   "name": "RS Food",
   "short_name": "RS Food",
-  "start_url": "./",
+  "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#fff3e0",
   "theme_color": "#e65100",
