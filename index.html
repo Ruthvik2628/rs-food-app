@@ -369,11 +369,12 @@ async function placeOrder() {
   };
 
   try {
+    
     const orderKey = await window.saveOrderToFirebase(orderData);
     localStorage.setItem("rsFoodTrackingToken", trackingToken);
 localStorage.setItem("rsFoodOrderId", orderId);
 localStorage.setItem("rsFoodOrderKey", orderKey);
-window.location.href = "my-order.html";
+
 
     alert(
       "Order placed successfully!\n\n" +
@@ -388,6 +389,7 @@ window.location.href = "my-order.html";
     document.getElementById("customer-phone").value = "";
     document.getElementById("customer-location").value = "";
     document.getElementById("customer-note").value = "";
+    window.location.href = "./my-order.html";
   } catch (error) {
     alert("Order could not be saved. Please try again.");
     console.log(error);
