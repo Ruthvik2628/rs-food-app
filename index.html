@@ -145,6 +145,7 @@
 
     <h1>RS Food</h1>
     <h2>Menu</h2>
+    <button onclick="window.location.href='my-order.html'">My Order</button>
 
     <div class="food-item">
       <img src="images/roti.jpg">
@@ -394,6 +395,9 @@ localStorage.setItem("rsFoodOrderKey", orderKey);
     alert("Order could not be saved. Please try again.");
     console.log(error);
   }
+}
+if (new URLSearchParams(window.location.search).get("menu") === "1") {
+  openMenu();
 }
 </script>
 <script type="module">
