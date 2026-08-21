@@ -222,16 +222,6 @@ orderAudioContext.resume();
   }
 };
 
-    if (trackingToken) {
-      await update(ref(database, "orderStatus/" + trackingToken), {
-        status: newStatus
-      });
-    }
-  } catch (error) {
-    alert("Status update aagalilla. Matte try maadi.");
-    console.log(error);
-  }
-};
         let firstOrderLoad = true;
 let seenOrderKeys = new Set();
 
