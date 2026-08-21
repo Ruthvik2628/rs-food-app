@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>RS Food Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial;
+      background: #fff3e0;
+      color: #222;
+    }
+
+    header {
+      background: #e65100;
+      color: white;
+      padding: 18px;
+      text-align: center;
+    }
+
+    #login-box, #dashboard {
+      width: 90%;
+      max-width: 700px;
+      margin: 35px auto;
+      background: white;
+      padding: 22px;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px #999;
+    }
+
+    input {
+      width: 92%;
+      padding: 12px;
+      margin: 8px 0;
+      font-size: 16px;
+      border: 1px solid #999;
+      border-radius: 7px;
+    }
+
+    button {
+      background: #e65100;
+      color: white;
+      border: none;
+      border-radius: 7px;
+      padding: 11px 18px;
+      font-size: 16px;
+      margin: 5px;
+    }
+
+    .order-card {
+      background: #fff;
+      border-left: 6px solid #e65100;
+      padding: 16px;
+      margin: 15px 0;
+      border-radius: 8px;
+      box-shadow: 0 2px 7px #bbb;
+    }
+
+    .new {
+      color: #e65100;
+      font-weight: bold;
+    }
+
+    #message {
+      color: #c62828;
+      font-weight: bold;
+    }
+
+    a {
+      color: #1565c0;
+      word-break: break-all;
+    }
+    .status-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+
+.status-buttons button {
+  border: none;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 16px;
+  font-weight: bold;
+  color: white;
+  background: #e65100;
+  cursor: pointer;
+}
+
+.status-buttons button:hover {
+  background: #bf4300;
+}
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <h1>RS Food Admin</h1>
+  </header>
+
+  <div id="login-box">
+    <h2>Owner Login</h2>
+
+    <input id="email" type="email" placeholder="Your Email">
+    <br>
+
+    <input id="password" type="password" placeholder="Your Password">
+    <br>
+
+    <button onclick="login()">Login</button>
+    <p id="message"></p>
+  </div>
+
+  <div id="dashboard" style="display: none;">
+    <button onclick="logout()">Logout</button>
+    <h2>New Orders</h2>
+    <div id="orders">Loading orders...</div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from
+      "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
+
+   import { getDatabase, ref, onValue, update } from
+  "https://www.gstatic.com/firebasejs/12.17.1/firebase-database.js";
+
+    import {
+      getAuth, signInWithEmailAndPassword,
+      signOut, onAuthStateChanged
+    } from
+      "https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAjpTACwrbATk5PU3Em1fERe5twa0Hkqi4",
+      authDomain: "rs-food-3260a.firebaseapp.com",
+      databaseURL: "https://rs-food-3260a-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "rs-food-3260a",
+      storageBucket: "rs-food-3260a.firebasestorage.app",
+      messagingSenderId: "268671249936",
+      appId: "1:268671249936:web:81d69e7781e7ac1a27e495"
+    };
+
+    const ownerUid = "dI3Tghp2Prc499tjPTl357yDG3s2";
+
+    const app = initializeApp(firebaseConfig);
+    const database = getDatabase(app);
+    const auth = getAuth(app);
+    let orderAudioContext;
+
+    function escapeText(value) {
+      return String(value || "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
+
+    window.login = async function() {
+        const AudioContext =
+  window.AudioContext || window.webkitAudioContext;
+
+if (!orderAudioContext) {
+  orderAudioContext = new AudioContext();
+}
+
+orderAudioContext.resume();
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+      } catch (error) {
+        document.getElementById("message").innerText =
+          "Wrong email or password.";
+      }
+    };
+
+    window.logout = function() {
+      signOut(auth);
+    };
+
+    onAuthStateChanged(auth, function(user) {
+      if (user && user.uid === ownerUid) {
+        document.getElementById("login-box").style.display = "none";
+        document.getElementById("dashboard").style.display = "block";
+        loadOrders();
+      } else {
+        document.getElementById("login-box").style.display = "block";
+        document.getElementById("dashboard").style.display = "none";
+
+        if (user) {
+          signOut(auth);
+        }
+      }
+    });
+
+   window.changeStatus = async function(orderKey, trackingToken, newStatus) {
+  try {
+    const orderUpdate = { status: newStatus };
+    const trackingUpdate = { status: newStatus };
+
+    if (newStatus === "Accepted") {
+      const acceptedAt = Date.now();
+      orderUpdate.acceptedAt = acceptedAt;
+      trackingUpdate.acceptedAt = acceptedAt;
+    }
+
+    await update(ref(database, "orders/" + orderKey), orderUpdate);
+
+    if (trackingToken) {
+      await update(
+        ref(database, "orderStatus/" + trackingToken),
+        trackingUpdate
+      );
+    }
+  } catch (error) {
+    alert("Status update aagalilla. Matte try maadi.");
+    console.log(error);
+  }
+};
+
+    if (trackingToken) {
+      await update(ref(database, "orderStatus/" + trackingToken), {
+        status: newStatus
+      });
+    }
+  } catch (error) {
+    alert("Status update aagalilla. Matte try maadi.");
+    console.log(error);
+  }
+};
+        let firstOrderLoad = true;
+let seenOrderKeys = new Set();
+
+function playOrderSound() {
+  try {
+    const AudioContext =
+      window.AudioContext || window.webkitAudioContext;
+
+    const sound = orderAudioContext;
+    const oscillator = sound.createOscillator();
+    const gain = sound.createGain();
+
+    oscillator.connect(gain);
+    gain.connect(sound.destination);
+
+    oscillator.frequency.value = 900;
+    gain.gain.value = 0.25;
+
+    oscillator.start();
+    oscillator.stop(sound.currentTime + 0.6);
+  } catch (error) {
+    console.log("Sound could not play");
+  }
+}
+
+function notifyNewOrder(order) {
+  playOrderSound();
+
+  alert(
+    "NEW ORDER RECEIVED!\n\n" +
+    "Customer: " + order.customerName +
+    "\nOrder ID: " + order.orderId +
+    "\nTotal: ₹" + order.grandTotal
+  );
+}
+function loadOrders() {
+      onValue(ref(database, "orders"), function(snapshot) {
+        const ordersBox = document.getElementById("orders");
+        const data = snapshot.val();
+        const orderEntries = Object.entries(data || {});
+
+const newEntries = orderEntries.filter(function(entry) {
+  return !seenOrderKeys.has(entry[0]);
+});
+
+if (!firstOrderLoad && newEntries.length > 0) {
+  notifyNewOrder(newEntries[0][1]);
+}
+
+seenOrderKeys = new Set(
+  orderEntries.map(function(entry) {
+    return entry[0];
+  })
+);
+
+firstOrderLoad = false;
+
+        if (!data) {
+          ordersBox.innerHTML = "<p>No orders yet.</p>";
+          return;
+        }
+
+        const orders = Object.entries(data).reverse();
+        let html = "";
+
+       orders.forEach(function(entry) {
+  const orderKey = entry[0];
+  const order = entry[1];
+          const items = Object.values(order.items || [])
+            .map(function(item) {
+              return escapeText(item.name) + " × " + item.quantity;
+            })
+            .join("<br>");
+
+          const time = order.createdAt
+            ? new Date(order.createdAt).toLocaleString("en-IN")
+            : "";
+
+          const location = escapeText(order.location);
+          const mapLink = location.startsWith("https://")
+            ? '<p><a href="' + location +
+              '" target="_blank">Open customer location in Maps</a></p>'
+            : "<p>Location: " + location + "</p>";
+
+          html += `
+            <div class="order-card">
+              <p class="new">Status: ${escapeText(order.status)}</p>
+              <p><b>Order ID:</b> ${escapeText(order.orderId)}</p>
+              <p><b>Time:</b> ${escapeText(time)}</p>
+              <p><b>Customer:</b> ${escapeText(order.customerName)}</p>
+              <p><b>Phone:</b> ${escapeText(order.phone)}</p>
+              ${mapLink}
+              <p><b>Payment:</b> ${escapeText(order.payment)}</p>
+              <p><b>Items:</b><br>${items}</p>
+              <p><b>Food Total:</b> ₹${escapeText(order.foodTotal)}</p>
+              <p><b>Delivery Charge:</b> ₹${escapeText(order.deliveryCharge)}</p>
+              <p><b>Grand Total:</b> ₹${escapeText(order.grandTotal)}</p>
+              <p><b>Note:</b> ${escapeText(order.note || "No note")}</p>
+              <div class="status-buttons">
+  <button type="button" onclick="changeStatus('${orderKey}', '${order.trackingToken}', 'Accepted')">Accept</button>
+  <button type="button" onclick="changeStatus('${orderKey}', '${order.trackingToken}', 'Ready')">Ready</button>
+  <button type="button" onclick="changeStatus('${orderKey}', '${order.trackingToken}', 'Delivered')">Delivered</button>
+</div>
+            </div>
+          `;
+        });
+
+        ordersBox.innerHTML = html;
+      });
+    }
+  </script>
+
+</body>
+</html>
