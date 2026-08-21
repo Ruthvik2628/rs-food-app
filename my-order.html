@@ -42,30 +42,40 @@
       border-radius: 8px;
       padding: 12px 18px;
       font-size: 16px;
-      margin-top: 15px;
+      margin: 10px 5px;
+    }
+
+    #cancel-button {
+      background: #c62828;
+      display: none;
+    }
+
+    #cancel-note {
+      color: #c62828;
+      font-weight: bold;
     }
   </style>
 </head>
 
 <body>
-  <header>
-    <h1>RS Food</h1>
-  </header>
+  <header><h1>RS Food</h1></header>
 
   <div id="order-box">
     <h2>My Order</h2>
     <p id="order-id"></p>
     <p id="status">Loading...</p>
-    <button onclick="window.location.href='index.html'">
-      Back to Menu
-    </button>
+
+    <button id="cancel-button" onclick="cancelOrder()">Cancel Order</button>
+    <p id="cancel-note"></p>
+
+    <button onclick="window.location.href='index.html'">Back to Menu</button>
   </div>
 
   <script type="module">
     import { initializeApp } from
       "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
 
-    import { getDatabase, ref, onValue } from
+    import { getDatabase, ref, onValue, update } from
       "https://www.gstatic.com/firebasejs/12.17.1/firebase-database.js";
 
     const firebaseConfig = {
@@ -83,21 +93,78 @@
 
     const token = localStorage.getItem("rsFoodTrackingToken");
     const orderId = localStorage.getItem("rsFoodOrderId");
+    const orderKey = localStorage.getItem("rsFoodOrderKey");
+
+    let latestStatus = null;
 
     document.getElementById("order-id").textContent =
       orderId ? "Order ID: " + orderId : "No recent order found.";
+
+    function showCancelOption() {
+      const cancelButton = document.getElementById("cancel-button");
+      const cancelNote = document.getElementById("cancel-note");
+
+      if (
+        latestStatus &&
+        latestStatus.status === "Accepted" &&
+        latestStatus.acceptedAt &&
+        Date.now() <= latestStatus.acceptedAt + 180000
+      ) {
+        const seconds = Math.ceil(
+          (latestStatus.acceptedAt + 180000 - Date.now()) / 1000
+        );
+
+        cancelButton.style.display = "inline-block";
+        cancelNote.textContent =
+          "You can cancel within " + seconds + " seconds.";
+      } else {
+        cancelButton.style.display = "none";
+
+        if (latestStatus && latestStatus.status === "Ready") {
+          cancelNote.textContent = "Order is ready. Cancellation is not available.";
+        } else if (latestStatus && latestStatus.status === "Cancelled") {
+          cancelNote.textContent = "This order is cancelled.";
+        } else if (latestStatus && latestStatus.status === "Accepted") {
+          cancelNote.textContent = "3-minute cancellation time is over.";
+        } else {
+          cancelNote.textContent = "";
+        }
+      }
+    }
+
+    window.cancelOrder = async function() {
+      if (!token || !orderKey) return;
+
+      if (!confirm("Do you want to cancel this order?")) return;
+
+      try {
+        await update(ref(database), {
+          ["orders/" + orderKey + "/status"]: "Cancelled",
+          ["orderStatus/" + token + "/status"]: "Cancelled"
+        });
+
+        alert("Your order has been cancelled.");
+      } catch (error) {
+        alert("Cancellation could not be completed.");
+        console.log(error);
+      }
+    };
 
     if (!token) {
       document.getElementById("status").textContent =
         "Place an order first.";
     } else {
       onValue(ref(database, "orderStatus/" + token), function(snapshot) {
-        const data = snapshot.val();
+        latestStatus = snapshot.val();
 
-        document.getElementById("status").textContent = data
-          ? "Current Status: " + data.status
+        document.getElementById("status").textContent = latestStatus
+          ? "Current Status: " + latestStatus.status
           : "Order status not found.";
+
+        showCancelOption();
       });
+
+      setInterval(showCancelOption, 1000);
     }
   </script>
 </body>
