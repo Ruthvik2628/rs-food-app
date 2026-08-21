@@ -1,4 +1,4 @@
-const CACHE_NAME = "rs-food-v4";
+const CACHE_NAME = "rs-food-v5";
 
 const filesToCache = [
   "./",
