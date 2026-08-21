@@ -1,5 +1,4 @@
-const CACHE_NAME = "rs-food-v5";
-
+const CACHE_NAME = "rs-food-v7";
 const filesToCache = [
   "./",
   "./index.html",
@@ -7,7 +6,9 @@ const filesToCache = [
   "./manifest.json",
   "./images/roti.jpg",
   "./images/chapathi.jpg",
-  "./images/chicken.jpg"
+  "./images/chicken.jpg",
+  "./images/icon-192.jpg",
+  "./images/icon-512.jpg"
 ];
 
 self.addEventListener("install", function(event) {
