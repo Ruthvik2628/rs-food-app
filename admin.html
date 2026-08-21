@@ -3,6 +3,8 @@
 <head>
   <title>RS Food Admin</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="manifest" href="admin-manifest.json">
+<meta name="theme-color" content="#e65100">
 
   <style>
     body {
@@ -173,9 +175,10 @@ orderAudioContext.resume();
       try {
         await signInWithEmailAndPassword(auth, email, password);
       } catch (error) {
-        document.getElementById("message").innerText =
-          "Wrong email or password.";
-      }
+  console.log(error);
+  document.getElementById("message").innerText =
+    "Login error: " + error.code;
+}
     };
 
     window.logout = function() {
@@ -333,6 +336,12 @@ firstOrderLoad = false;
       });
     }
   </script>
-
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function() {
+      navigator.serviceWorker.register("./service-worker.js");
+    });
+  }
+</script>
 </body>
 </html>
