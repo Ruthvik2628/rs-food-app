@@ -4,7 +4,7 @@
   <title>RS Food Admin</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="manifest" href="admin-manifest.json">
-<meta name="theme-color" content="#e65100">
+  <meta name="theme-color" content="#e65100">
 
   <style>
     body {
@@ -73,32 +73,44 @@
       color: #1565c0;
       word-break: break-all;
     }
+
     .status-buttons {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-top: 18px;
-}
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 18px;
+    }
 
-.status-buttons button {
-  border: none;
-  border-radius: 8px;
-  padding: 10px 14px;
-  font-size: 16px;
-  font-weight: bold;
-  color: white;
-  background: #e65100;
-  cursor: pointer;
-}
+    .status-buttons button {
+      border: none;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 16px;
+      font-weight: bold;
+      color: white;
+      background: #e65100;
+      cursor: pointer;
+    }
 
-.status-buttons button:hover {
-  background: #bf4300;
-}
+    .status-buttons button:hover {
+      background: #bf4300;
+    }
+
+    #new-order-alert {
+      display: none;
+      background: #b71c1c;
+      color: white;
+      padding: 16px;
+      border-radius: 10px;
+      font-weight: bold;
+      font-size: 18px;
+      margin-bottom: 16px;
+      text-align: center;
+    }
   </style>
 </head>
 
 <body>
-
   <header>
     <h1>RS Food Admin</h1>
   </header>
@@ -119,6 +131,11 @@
   <div id="dashboard" style="display: none;">
     <button onclick="logout()">Logout</button>
     <h2>New Orders</h2>
+
+    <div id="new-order-alert">
+      🔔 NEW ORDER RECEIVED! Bell will ring for 30 seconds.
+    </div>
+
     <div id="orders">Loading orders...</div>
   </div>
 
@@ -126,8 +143,8 @@
     import { initializeApp } from
       "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
 
-   import { getDatabase, ref, onValue, update } from
-  "https://www.gstatic.com/firebasejs/12.17.1/firebase-database.js";
+    import { getDatabase, ref, onValue, update } from
+      "https://www.gstatic.com/firebasejs/12.17.1/firebase-database.js";
 
     import {
       getAuth, signInWithEmailAndPassword,
@@ -150,7 +167,12 @@
     const app = initializeApp(firebaseConfig);
     const database = getDatabase(app);
     const auth = getAuth(app);
+
     let orderAudioContext;
+    let orderBellTimer = null;
+    let orderBellStopTimer = null;
+    let firstOrderLoad = true;
+    let seenOrderKeys = new Set();
 
     function escapeText(value) {
       return String(value || "")
@@ -160,28 +182,82 @@
         .replaceAll('"', "&quot;");
     }
 
+    function prepareAudio() {
+      const AudioContext =
+        window.AudioContext || window.webkitAudioContext;
+
+      if (!orderAudioContext) {
+        orderAudioContext = new AudioContext();
+      }
+
+      orderAudioContext.resume();
+    }
+
+    function ringBellOnce() {
+      try {
+        prepareAudio();
+
+        const now = orderAudioContext.currentTime;
+        const frequencies = [1046, 1318];
+
+        frequencies.forEach(function(frequency, index) {
+          const oscillator = orderAudioContext.createOscillator();
+          const gain = orderAudioContext.createGain();
+
+          oscillator.type = "sine";
+          oscillator.frequency.value = frequency;
+
+          oscillator.connect(gain);
+          gain.connect(orderAudioContext.destination);
+
+          const startTime = now + (index * 0.28);
+
+          gain.gain.setValueAtTime(0.001, startTime);
+          gain.gain.exponentialRampToValueAtTime(0.9, startTime + 0.03);
+          gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.23);
+
+          oscillator.start(startTime);
+          oscillator.stop(startTime + 0.25);
+        });
+      } catch (error) {
+        console.log("Bell sound could not play", error);
+      }
+    }
+
+    function playOrderBellForThirtySeconds() {
+      clearInterval(orderBellTimer);
+      clearTimeout(orderBellStopTimer);
+
+      ringBellOnce();
+
+      orderBellTimer = setInterval(function() {
+        ringBellOnce();
+      }, 1300);
+
+      orderBellStopTimer = setTimeout(function() {
+        clearInterval(orderBellTimer);
+        orderBellTimer = null;
+      }, 30000);
+    }
+
     window.login = async function() {
-        const AudioContext =
-  window.AudioContext || window.webkitAudioContext;
+      prepareAudio();
 
-if (!orderAudioContext) {
-  orderAudioContext = new AudioContext();
-}
-
-orderAudioContext.resume();
       const email = document.getElementById("email").value;
       const password = document.getElementById("password").value;
 
       try {
         await signInWithEmailAndPassword(auth, email, password);
       } catch (error) {
-  console.log(error);
-  document.getElementById("message").innerText =
-    "Login error: " + error.code;
-}
+        console.log(error);
+        document.getElementById("message").innerText =
+          "Login error: " + error.code;
+      }
     };
 
     window.logout = function() {
+      clearInterval(orderBellTimer);
+      clearTimeout(orderBellStopTimer);
       signOut(auth);
     };
 
@@ -200,87 +276,61 @@ orderAudioContext.resume();
       }
     });
 
-   window.changeStatus = async function(orderKey, trackingToken, newStatus) {
-  try {
-    const orderUpdate = { status: newStatus };
-    const trackingUpdate = { status: newStatus };
+    window.changeStatus = async function(orderKey, trackingToken, newStatus) {
+      try {
+        const orderUpdate = { status: newStatus };
+        const trackingUpdate = { status: newStatus };
 
-    if (newStatus === "Accepted") {
-      const acceptedAt = Date.now();
-      orderUpdate.acceptedAt = acceptedAt;
-      trackingUpdate.acceptedAt = acceptedAt;
+        if (newStatus === "Accepted") {
+          const acceptedAt = Date.now();
+          orderUpdate.acceptedAt = acceptedAt;
+          trackingUpdate.acceptedAt = acceptedAt;
+        }
+
+        await update(ref(database, "orders/" + orderKey), orderUpdate);
+
+        if (trackingToken) {
+          await update(
+            ref(database, "orderStatus/" + trackingToken),
+            trackingUpdate
+          );
+        }
+      } catch (error) {
+        alert("Status update aagalilla. Matte try maadi.");
+        console.log(error);
+      }
+    };
+
+    function notifyNewOrder(order) {
+      document.getElementById("new-order-alert").style.display = "block";
+      playOrderBellForThirtySeconds();
+
+      setTimeout(function() {
+        document.getElementById("new-order-alert").style.display = "none";
+      }, 30000);
     }
 
-    await update(ref(database, "orders/" + orderKey), orderUpdate);
-
-    if (trackingToken) {
-      await update(
-        ref(database, "orderStatus/" + trackingToken),
-        trackingUpdate
-      );
-    }
-  } catch (error) {
-    alert("Status update aagalilla. Matte try maadi.");
-    console.log(error);
-  }
-};
-
-        let firstOrderLoad = true;
-let seenOrderKeys = new Set();
-
-function playOrderSound() {
-  try {
-    const AudioContext =
-      window.AudioContext || window.webkitAudioContext;
-
-    const sound = orderAudioContext;
-    const oscillator = sound.createOscillator();
-    const gain = sound.createGain();
-
-    oscillator.connect(gain);
-    gain.connect(sound.destination);
-
-    oscillator.frequency.value = 900;
-    gain.gain.value = 0.25;
-
-    oscillator.start();
-    oscillator.stop(sound.currentTime + 0.6);
-  } catch (error) {
-    console.log("Sound could not play");
-  }
-}
-
-function notifyNewOrder(order) {
-  playOrderSound();
-
-  alert(
-    "NEW ORDER RECEIVED!\n\n" +
-    "Customer: " + order.customerName +
-    "\nOrder ID: " + order.orderId +
-    "\nTotal: ₹" + order.grandTotal
-  );
-}
-function loadOrders() {
+    function loadOrders() {
       onValue(ref(database, "orders"), function(snapshot) {
         const ordersBox = document.getElementById("orders");
         const data = snapshot.val();
         const orderEntries = Object.entries(data || {});
 
-const newEntries = orderEntries.filter(function(entry) {
-  return !seenOrderKeys.has(entry[0]);
-});
+        const newEntries = orderEntries.filter(function(entry) {
+          return !seenOrderKeys.has(entry[0]);
+        });
 
-if (!firstOrderLoad && newEntries.length > 0) {
-  notifyNewOrder(newEntries[0][1]);
-}
+        if (!firstOrderLoad && newEntries.length > 0) {
+          notifyNewOrder(newEntries[0][1]);
+        }
 
-seenOrderKeys = new Set(
-  orderEntries.map(function(entry) {
-    return entry[0];
-  })
-);
+        seenOrderKeys = new Set(
+          orderEntries.map(function(entry) {
+            return entry[0];
+          })
+        );
 
-firstOrderLoad = false;
+        firstOrderLoad = false;
 
         if (!data) {
           ordersBox.innerHTML = "<p>No orders yet.</p>";
@@ -290,9 +340,10 @@ firstOrderLoad = false;
         const orders = Object.entries(data).reverse();
         let html = "";
 
-       orders.forEach(function(entry) {
-  const orderKey = entry[0];
-  const order = entry[1];
+        orders.forEach(function(entry) {
+          const orderKey = entry[0];
+          const order = entry[1];
+
           const items = Object.values(order.items || [])
             .map(function(item) {
               return escapeText(item.name) + " × " + item.quantity;
@@ -323,11 +374,12 @@ firstOrderLoad = false;
               <p><b>Delivery Charge:</b> ₹${escapeText(order.deliveryCharge)}</p>
               <p><b>Grand Total:</b> ₹${escapeText(order.grandTotal)}</p>
               <p><b>Note:</b> ${escapeText(order.note || "No note")}</p>
+
               <div class="status-buttons">
-  <button type="button" onclick="changeStatus('${orderKey}', '${order.trackingToken}', 'Accepted')">Accept</button>
-  <button type="button" onclick="changeStatus('${orderKey}', '${order.trackingToken}', 'Ready')">Ready</button>
-  <button type="button" onclick="changeStatus('${orderKey}', '${order.trackingToken}', 'Delivered')">Delivered</button>
-</div>
+                <button type="button" onclick="changeStatus('${orderKey}', '${order.trackingToken}', 'Accepted')">Accept</button>
+                <button type="button" onclick="changeStatus('${orderKey}', '${order.trackingToken}', 'Ready')">Ready</button>
+                <button type="button" onclick="changeStatus('${orderKey}', '${order.trackingToken}', 'Delivered')">Delivered</button>
+              </div>
             </div>
           `;
         });
@@ -336,12 +388,13 @@ firstOrderLoad = false;
       });
     }
   </script>
-<script>
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", function() {
-      navigator.serviceWorker.register("./service-worker.js");
-    });
-  }
-</script>
+
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", function() {
+        navigator.serviceWorker.register("./service-worker.js");
+      });
+    }
+  </script>
 </body>
 </html>
