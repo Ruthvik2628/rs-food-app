@@ -133,7 +133,7 @@
     <h2>New Orders</h2>
 
     <div id="new-order-alert">
-      🔔 NEW ORDER RECEIVED! Bell will ring for 30 seconds.
+      🔔 NEW ORDER RECEIVED! Bell is ringing — click Accept to stop it.
     </div>
 
     <div id="orders">Loading orders...</div>
@@ -170,7 +170,7 @@
 
     let orderAudioContext;
     let orderBellTimer = null;
-    let orderBellStopTimer = null;
+    let ringingOrderKey = null;
     let firstOrderLoad = true;
     let seenOrderKeys = new Set();
 
@@ -204,40 +204,41 @@
           const oscillator = orderAudioContext.createOscillator();
           const gain = orderAudioContext.createGain();
 
-          oscillator.type = "sine";
+          oscillator.type = "square";
           oscillator.frequency.value = frequency;
 
           oscillator.connect(gain);
           gain.connect(orderAudioContext.destination);
 
-          const startTime = now + (index * 0.28);
+          const startTime = now + (index * 0.25);
 
           gain.gain.setValueAtTime(0.001, startTime);
-          gain.gain.exponentialRampToValueAtTime(0.9, startTime + 0.03);
-          gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.23);
+          gain.gain.exponentialRampToValueAtTime(0.95, startTime + 0.03);
+          gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.22);
 
           oscillator.start(startTime);
-          oscillator.stop(startTime + 0.25);
+          oscillator.stop(startTime + 0.24);
         });
       } catch (error) {
         console.log("Bell sound could not play", error);
       }
     }
 
-    function playOrderBellForThirtySeconds() {
+    function startOrderBell() {
       clearInterval(orderBellTimer);
-      clearTimeout(orderBellStopTimer);
 
       ringBellOnce();
 
       orderBellTimer = setInterval(function() {
         ringBellOnce();
-      }, 1300);
+      }, 1000);
+    }
 
-      orderBellStopTimer = setTimeout(function() {
-        clearInterval(orderBellTimer);
-        orderBellTimer = null;
-      }, 30000);
+    function stopOrderBell() {
+      clearInterval(orderBellTimer);
+      orderBellTimer = null;
+      ringingOrderKey = null;
+      document.getElementById("new-order-alert").style.display = "none";
     }
 
     window.login = async function() {
@@ -256,8 +257,7 @@
     };
 
     window.logout = function() {
-      clearInterval(orderBellTimer);
-      clearTimeout(orderBellStopTimer);
+      stopOrderBell();
       signOut(auth);
     };
 
@@ -295,19 +295,20 @@
             trackingUpdate
           );
         }
+
+        if (newStatus === "Accepted" && orderKey === ringingOrderKey) {
+          stopOrderBell();
+        }
       } catch (error) {
         alert("Status update aagalilla. Matte try maadi.");
         console.log(error);
       }
     };
 
-    function notifyNewOrder(order) {
+    function notifyNewOrder(orderKey) {
+      ringingOrderKey = orderKey;
       document.getElementById("new-order-alert").style.display = "block";
-      playOrderBellForThirtySeconds();
-
-      setTimeout(function() {
-        document.getElementById("new-order-alert").style.display = "none";
-      }, 30000);
+      startOrderBell();
     }
 
     function loadOrders() {
@@ -321,7 +322,7 @@
         });
 
         if (!firstOrderLoad && newEntries.length > 0) {
-          notifyNewOrder(newEntries[0][1]);
+          notifyNewOrder(newEntries[0][0]);
         }
 
         seenOrderKeys = new Set(
