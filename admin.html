@@ -69,11 +69,6 @@
       font-weight: bold;
     }
 
-    a {
-      color: #1565c0;
-      word-break: break-all;
-    }
-
     .status-buttons {
       display: flex;
       gap: 10px;
@@ -106,6 +101,14 @@
       font-size: 18px;
       margin-bottom: 16px;
       text-align: center;
+    }
+
+    .customer-map {
+      width: 100%;
+      height: 250px;
+      border: 0;
+      border-radius: 10px;
+      margin: 8px 0;
     }
   </style>
 </head>
@@ -181,6 +184,17 @@
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;");
     }
+
+    window.copyLocation = function(location) {
+      const box = document.createElement("textarea");
+      box.value = location;
+      document.body.appendChild(box);
+      box.select();
+      document.execCommand("copy");
+      document.body.removeChild(box);
+
+      alert("Location link copied. Google Maps open maadi paste maadi.");
+    };
 
     function prepareAudio() {
       const AudioContext =
@@ -356,9 +370,13 @@
             : "";
 
           const location = escapeText(order.location);
+
           const mapLink = location.startsWith("https://")
-            ? '<p><a href="' + location +
-              '">Open customer location in Maps</a></p>'
+            ? '<p><b>Customer Map:</b></p>' +
+              '<iframe class="customer-map" src="' + location +
+              '&z=16&output=embed"></iframe>' +
+              '<br><button type="button" onclick="copyLocation(\'' +
+              location + '\')">Copy Location Link</button>'
             : "<p>Location: " + location + "</p>";
 
           html += `
