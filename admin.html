@@ -371,14 +371,12 @@
 
           const location = escapeText(order.location);
 
-          const mapLink = location.startsWith("https://")
-            ? '<p><b>Customer Map:</b></p>' +
-              '<iframe class="customer-map" src="' + location +
-              '&z=16&output=embed"></iframe>' +
-              '<br><button type="button" onclick="copyLocation(\'' +
-              location + '\')">Copy Location Link</button>'
-            : "<p>Location: " + location + "</p>";
-
+         const mapLink = location.startsWith("https://")
+  ? '<p><a href="' + location +
+    '" style="display:inline-block;background:#e65100;color:white;' +
+    'padding:13px 18px;border-radius:8px;text-decoration:none;' +
+    'font-weight:bold;">Open Customer Location in Google Maps</a></p>'
+  : "<p>Location: " + location + "</p>";
           html += `
             <div class="order-card">
               <p class="new">Status: ${escapeText(order.status)}</p>
