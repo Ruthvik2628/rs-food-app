@@ -1,40 +1,607 @@
-function getCurrentLocation() {
-  let status = document.getElementById("location-status");
+<!DOCTYPE html>
+<html>
+<head>
+  <title>RS Food</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#e65100">
+  <meta name="apple-mobile-web-app-capable" content="yes">
 
-  if (!navigator.geolocation) {
-    status.innerText = "Your browser does not support location.";
-    return;
-  }
-
-  status.innerText = "Getting your location...";
-
-  navigator.geolocation.getCurrentPosition(
-    function(position) {
-      let latitude = position.coords.latitude;
-      let longitude = position.coords.longitude;
-
-      let deliveryMapLink =
-        "https://www.google.com/maps/dir/?api=1&destination=" +
-        latitude + "%2C" + longitude;
-
-      document.getElementById("customer-location").value =
-        deliveryMapLink;
-
-      status.innerText = "Current location added successfully";
-
-      document.getElementById("map").innerHTML =
-        "<iframe src='https://www.google.com/maps?q=" +
-        latitude + "," + longitude +
-        "&z=16&output=embed'></iframe>";
-    },
-    function() {
-      status.innerText =
-        "Location permission denied. Please type your address.";
-    },
-    {
-      enableHighAccuracy: true,
-      timeout: 15000,
-      maximumAge: 0
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial;
+      background-color: #fff3e0;
+      text-align: center;
     }
-  );
-}
+
+    #welcome-page {
+      background-color: #e65100;
+      color: white;
+      height: 100vh;
+      padding-top: 180px;
+    }
+
+    #welcome-page h1 {
+      font-size: 50px;
+    }
+
+    button {
+      background-color: #e65100;
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      font-size: 16px;
+      border-radius: 8px;
+      margin: 5px;
+    }
+
+    #start-button {
+      background-color: white;
+      color: #e65100;
+      font-size: 20px;
+    }
+
+    #menu-page {
+      display: none;
+      padding: 20px;
+    }
+
+    .food-item {
+      display: inline-block;
+      vertical-align: top;
+      background-color: white;
+      width: 260px;
+      margin: 30px;
+      padding: 15px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px gray;
+    }
+
+    .food-item img {
+      width: 230px;
+      height: 180px;
+      object-fit: cover;
+      border-radius: 10px;
+    }
+
+    #cart {
+      width: 500px;
+      max-width: 90%;
+      margin: 35px auto;
+      font-size: 18px;
+    }
+
+    .cart-row {
+      display: grid;
+      grid-template-columns: 1fr 40px 30px 40px 65px;
+      align-items: center;
+      gap: 7px;
+      margin: 14px 0;
+      text-align: left;
+    }
+
+    .cart-row button {
+      padding: 8px;
+      margin: 0;
+      font-size: 16px;
+    }
+
+    .cart-row span {
+      text-align: center;
+    }
+
+    #cart h2 {
+      font-size: 26px;
+    }
+
+    #cart input,
+    #cart select,
+    #cart textarea {
+      width: 90%;
+      padding: 12px;
+      font-size: 17px;
+      border: 1px solid #999;
+      border-radius: 7px;
+    }
+
+    #cart textarea {
+      height: 80px;
+    }
+
+    #cart hr {
+      margin: 25px 0;
+    }
+
+    #cart > button {
+      font-size: 18px;
+      padding: 13px 25px;
+    }
+
+    #map iframe {
+      width: 90%;
+      height: 250px;
+      border: 0;
+      border-radius: 10px;
+      margin-top: 10px;
+    }
+
+    #profile-box {
+      display: none;
+      position: fixed;
+      z-index: 10;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.65);
+      overflow: auto;
+    }
+
+    .profile-card {
+      background: white;
+      width: 88%;
+      max-width: 430px;
+      margin: 80px auto;
+      padding: 25px;
+      border-radius: 14px;
+      box-shadow: 0 3px 15px #333;
+    }
+
+    .profile-card input,
+    .profile-card textarea {
+      width: 90%;
+      padding: 12px;
+      margin: 8px 0;
+      font-size: 16px;
+      border: 1px solid #999;
+      border-radius: 7px;
+    }
+
+    .profile-card textarea {
+      height: 70px;
+    }
+
+    #profile-message {
+      color: #c62828;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="welcome-page">
+    <h1>RS Food</h1>
+    <p>Fresh food delivered to your home</p>
+    <button id="start-button" onclick="openMenu()">Ready to Order</button>
+  </div>
+
+  <div id="profile-box">
+    <div class="profile-card">
+      <h2>Create Your Profile</h2>
+      <p>Save details once. Next order alli automatic fill aagutte.</p>
+
+      <input type="text" id="profile-name" placeholder="Your Name">
+      <br>
+
+      <input type="text" id="profile-phone" placeholder="10-digit Phone Number">
+      <br>
+
+      <textarea id="profile-address" placeholder="Default delivery address (optional)"></textarea>
+      <br>
+
+      <button onclick="saveProfile()">Save Profile</button>
+      <button id="close-profile-button" onclick="closeProfile()" style="display: none;">
+        Cancel
+      </button>
+
+      <p id="profile-message"></p>
+    </div>
+  </div>
+
+  <div id="menu-page">
+    <h1>RS Food</h1>
+    <h2>Menu</h2>
+
+    <button onclick="window.location.href='my-order.html'">My Order</button>
+    <button onclick="openProfileEditor()">Edit Profile</button>
+
+    <div class="food-item">
+      <img src="images/roti.jpg">
+      <h3>Roti - ₹15</h3>
+      <button onclick="addToCart('Roti', 15)">Add to Cart</button>
+    </div>
+
+    <div class="food-item">
+      <img src="images/chapathi.jpg">
+      <h3>Chapathi - ₹15</h3>
+      <button onclick="addToCart('Chapathi', 15)">Add to Cart</button>
+    </div>
+
+    <div class="food-item">
+      <img src="images/chicken.jpg">
+      <h3>Chicken Curry - ₹80</h3>
+      <button onclick="addToCart('Chicken Curry', 80)">Add to Cart</button>
+    </div>
+
+    <div id="cart">
+      <h2>My Cart</h2>
+
+      <div id="cart-items">Cart empty</div>
+
+      <p>Food Total: ₹<span id="food-total">0</span></p>
+      <p>Delivery Charge: ₹40</p>
+      <h3>Grand Total: ₹<span id="total">0</span></h3>
+
+      <button onclick="clearCart()">Clear Cart</button>
+      <br><br>
+      <hr>
+
+      <h2>Delivery Details</h2>
+
+      <input type="text" id="customer-name" placeholder="Your Name">
+      <br><br>
+
+      <input type="text" id="customer-phone" placeholder="Phone Number">
+      <br><br>
+
+      <input type="text" id="customer-location" placeholder="Delivery Location">
+      <br><br>
+
+      <button type="button" onclick="getCurrentLocation()">
+        Use My Current Location
+      </button>
+
+      <p id="location-status"></p>
+
+      <div id="map"></div>
+      <br><br>
+
+      <textarea id="customer-note" placeholder="Special instruction (optional)"></textarea>
+      <br><br>
+
+      <select id="payment-method">
+        <option value="Cash on Delivery">Cash on Delivery</option>
+        <option value="UPI Payment">UPI Payment</option>
+      </select>
+      <br><br>
+
+      <button onclick="placeOrder()">Place Order</button>
+
+      <div id="order-tracking">
+        <h3>Your Order Status</h3>
+        <p id="tracking-order-id"></p>
+        <p id="tracking-status">Place an order to see live status.</p>
+        <button id="cancel-order-button" style="display: none;" onclick="cancelOrder()">
+          Cancel Order
+        </button>
+        <p id="cancel-message"></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let cart = [];
+    let total = 0;
+    let deliveryCharge = 40;
+
+    function getSavedProfile() {
+      const savedProfile = localStorage.getItem("rsFoodCustomerProfile");
+      return savedProfile ? JSON.parse(savedProfile) : null;
+    }
+
+    function fillDeliveryDetails() {
+      const profile = getSavedProfile();
+
+      if (profile) {
+        document.getElementById("customer-name").value = profile.name || "";
+        document.getElementById("customer-phone").value = profile.phone || "";
+        document.getElementById("customer-location").value = profile.address || "";
+      }
+    }
+
+    function openMenu() {
+      document.getElementById("welcome-page").style.display = "none";
+      document.getElementById("menu-page").style.display = "block";
+
+      const profile = getSavedProfile();
+      fillDeliveryDetails();
+
+      if (!profile) {
+        document.getElementById("close-profile-button").style.display = "none";
+        document.getElementById("profile-box").style.display = "block";
+      }
+    }
+
+    function openProfileEditor() {
+      const profile = getSavedProfile();
+
+      document.getElementById("profile-name").value = profile ? profile.name : "";
+      document.getElementById("profile-phone").value = profile ? profile.phone : "";
+      document.getElementById("profile-address").value = profile ? profile.address : "";
+      document.getElementById("profile-message").innerText = "";
+      document.getElementById("close-profile-button").style.display = "inline-block";
+      document.getElementById("profile-box").style.display = "block";
+    }
+
+    function closeProfile() {
+      document.getElementById("profile-box").style.display = "none";
+    }
+
+    function saveProfile() {
+      const name = document.getElementById("profile-name").value.trim();
+      const phone = document.getElementById("profile-phone").value.trim();
+      const address = document.getElementById("profile-address").value.trim();
+      const message = document.getElementById("profile-message");
+
+      if (name === "") {
+        message.innerText = "Please enter your name.";
+        return;
+      }
+
+      if (phone.length !== 10 || isNaN(phone)) {
+        message.innerText = "Please enter a valid 10-digit phone number.";
+        return;
+      }
+
+      const profile = {
+        name: name,
+        phone: phone,
+        address: address
+      };
+
+      localStorage.setItem("rsFoodCustomerProfile", JSON.stringify(profile));
+      fillDeliveryDetails();
+      document.getElementById("profile-box").style.display = "none";
+      alert("Profile saved successfully!");
+    }
+
+    function addToCart(name, price) {
+      let foundItem = cart.find(function(item) {
+        return item.name === name;
+      });
+
+      if (foundItem) {
+        foundItem.quantity++;
+      } else {
+        cart.push({
+          name: name,
+          price: price,
+          quantity: 1
+        });
+      }
+
+      renderCart();
+    }
+
+    function changeQuantity(name, change) {
+      let item = cart.find(function(item) {
+        return item.name === name;
+      });
+
+      item.quantity = item.quantity + change;
+
+      if (item.quantity === 0) {
+        cart = cart.filter(function(item) {
+          return item.name !== name;
+        });
+      }
+
+      renderCart();
+    }
+
+    function renderCart() {
+      let foodTotal = 0;
+      let cartText = "";
+
+      for (let i = 0; i < cart.length; i++) {
+        let item = cart[i];
+        let itemTotal = item.price * item.quantity;
+
+        foodTotal = foodTotal + itemTotal;
+
+        cartText += "<div class='cart-row'>";
+        cartText += "<b>" + item.name + "</b>";
+        cartText += "<button onclick=\"changeQuantity('" + item.name + "', -1)\">-</button>";
+        cartText += "<span>" + item.quantity + "</span>";
+        cartText += "<button onclick=\"changeQuantity('" + item.name + "', 1)\">+</button>";
+        cartText += "<span>₹" + itemTotal + "</span>";
+        cartText += "</div>";
+      }
+
+      if (cart.length === 0) {
+        cartText = "Cart empty";
+        total = 0;
+      } else {
+        total = foodTotal + deliveryCharge;
+      }
+
+      document.getElementById("cart-items").innerHTML = cartText;
+      document.getElementById("food-total").innerText = foodTotal;
+      document.getElementById("total").innerText = total;
+    }
+
+    function clearCart() {
+      cart = [];
+      renderCart();
+    }
+
+    function getCurrentLocation() {
+      let status = document.getElementById("location-status");
+
+      if (navigator.geolocation) {
+        status.innerText = "Getting your location...";
+
+        navigator.geolocation.getCurrentPosition(
+          function(position) {
+            let latitude = position.coords.latitude;
+            let longitude = position.coords.longitude;
+
+            document.getElementById("customer-location").value =
+              "https://www.google.com/maps?q=" + latitude + "," + longitude;
+
+            status.innerText = "Current location added successfully";
+
+            document.getElementById("map").innerHTML =
+              "<iframe src='https://www.google.com/maps?q=" +
+              latitude + "," + longitude +
+              "&z=16&output=embed'></iframe>";
+          },
+          function() {
+            status.innerText =
+              "Location permission denied. Please type your address.";
+          }
+        );
+      } else {
+        status.innerText = "Your browser does not support location.";
+      }
+    }
+
+    async function placeOrder() {
+      let name = document.getElementById("customer-name").value.trim();
+      let phone = document.getElementById("customer-phone").value.trim();
+      let location = document.getElementById("customer-location").value.trim();
+      let payment = document.getElementById("payment-method").value;
+      let note = document.getElementById("customer-note").value.trim();
+
+      if (cart.length === 0) {
+        alert("Please add food items first");
+        return;
+      }
+
+      if (name === "" || phone === "" || location === "") {
+        alert("Please fill all delivery details");
+        return;
+      }
+
+      if (phone.length !== 10 || isNaN(phone)) {
+        alert("Please enter a valid 10-digit phone number");
+        return;
+      }
+
+      const profile = {
+        name: name,
+        phone: phone,
+        address: location
+      };
+
+      localStorage.setItem("rsFoodCustomerProfile", JSON.stringify(profile));
+
+      let foodTotal = total - deliveryCharge;
+      let orderId = "RS" + Date.now().toString().slice(-6);
+      let trackingToken = crypto.randomUUID();
+
+      let orderData = {
+        orderId: orderId,
+        trackingToken: trackingToken,
+        customerName: name,
+        phone: phone,
+        location: location,
+        payment: payment,
+        note: note,
+        items: cart,
+        foodTotal: foodTotal,
+        deliveryCharge: deliveryCharge,
+        grandTotal: total
+      };
+
+      try {
+        const orderKey = await window.saveOrderToFirebase(orderData);
+
+        localStorage.setItem("rsFoodTrackingToken", trackingToken);
+        localStorage.setItem("rsFoodOrderId", orderId);
+        localStorage.setItem("rsFoodOrderKey", orderKey);
+
+        alert(
+          "Order placed successfully!\n\n" +
+          "Order ID: " + orderId +
+          "\nGrand Total: ₹" + total
+        );
+
+        cart = [];
+        renderCart();
+        document.getElementById("customer-note").value = "";
+        window.location.href = "./my-order.html";
+      } catch (error) {
+        alert("Order could not be saved. Please try again.");
+        console.log(error);
+      }
+    }
+
+    if (new URLSearchParams(window.location.search).get("menu") === "1") {
+      openMenu();
+    }
+  </script>
+
+  <script type="module">
+    import { initializeApp } from
+      "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
+
+    import { getDatabase, ref, push, set, onValue } from
+      "https://www.gstatic.com/firebasejs/12.17.1/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAjpTACwrbATk5PU3Em1fERe5twa0Hkqi4",
+      authDomain: "rs-food-3260a.firebaseapp.com",
+      databaseURL: "https://rs-food-3260a-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "rs-food-3260a",
+      storageBucket: "rs-food-3260a.firebasestorage.app",
+      messagingSenderId: "268671249936",
+      appId: "1:268671249936:web:81d69e7781e7ac1a27e495"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const database = getDatabase(app);
+
+    window.saveOrderToFirebase = async function(orderData) {
+      const newOrder = push(ref(database, "orders"));
+
+      await set(newOrder, {
+        ...orderData,
+        status: "New",
+        createdAt: new Date().toISOString()
+      });
+
+      await set(ref(database, "orderStatus/" + orderData.trackingToken), {
+        orderId: orderData.orderId,
+        status: "New"
+      });
+
+      return newOrder.key;
+    };
+
+    window.showOrderTracking = function(token, orderId) {
+      const trackingBox = document.getElementById("order-tracking");
+
+      trackingBox.style.display = "block";
+      document.getElementById("tracking-order-id").textContent =
+        "Order ID: " + orderId;
+
+      onValue(ref(database, "orderStatus/" + token), function(snapshot) {
+        const statusData = snapshot.val();
+
+        if (statusData) {
+          document.getElementById("tracking-status").textContent =
+            "Current Status: " + statusData.status;
+        }
+      });
+    };
+
+    const savedTrackingToken = localStorage.getItem("rsFoodTrackingToken");
+    const savedOrderId = localStorage.getItem("rsFoodOrderId");
+
+    if (savedTrackingToken && savedOrderId) {
+      window.showOrderTracking(savedTrackingToken, savedOrderId);
+    }
+  </script>
+
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", function() {
+        navigator.serviceWorker.register("./service-worker.js");
+      });
+    }
+  </script>
+</body>
+</html>
