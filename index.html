@@ -427,36 +427,43 @@
       renderCart();
     }
 
-    function getCurrentLocation() {
-      let status = document.getElementById("location-status");
+   function getCurrentLocation() {
+  let status = document.getElementById("location-status");
 
-      if (navigator.geolocation) {
-        status.innerText = "Getting your location...";
+  if (!navigator.geolocation) {
+    status.innerText = "Your browser does not support location.";
+    return;
+  }
 
-        navigator.geolocation.getCurrentPosition(
-          function(position) {
-            let latitude = position.coords.latitude;
-            let longitude = position.coords.longitude;
+  status.innerText = "Getting your location...";
 
-            document.getElementById("customer-location").value =
-              "https://www.google.com/maps?q=" + latitude + "," + longitude;
+  navigator.geolocation.getCurrentPosition(
+    function(position) {
+      let latitude = position.coords.latitude;
+      let longitude = position.coords.longitude;
 
-            status.innerText = "Current location added successfully";
+      document.getElementById("customer-location").value =
+        "https://www.google.com/maps/dir/?api=1&destination=" +
+        latitude + "%2C" + longitude;
 
-            document.getElementById("map").innerHTML =
-              "<iframe src='https://www.google.com/maps?q=" +
-              latitude + "," + longitude +
-              "&z=16&output=embed'></iframe>";
-          },
-          function() {
-            status.innerText =
-              "Location permission denied. Please type your address.";
-          }
-        );
-      } else {
-        status.innerText = "Your browser does not support location.";
-      }
+      status.innerText = "Current location added successfully";
+
+      document.getElementById("map").innerHTML =
+        "<iframe src='https://www.google.com/maps?q=" +
+        latitude + "," + longitude +
+        "&z=16&output=embed'></iframe>";
+    },
+    function() {
+      status.innerText =
+        "Location permission denied. Please type your address.";
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 15000,
+      maximumAge: 0
     }
+  );
+}
 
     async function placeOrder() {
       let name = document.getElementById("customer-name").value.trim();
