@@ -202,6 +202,17 @@
 
   <div id="menu-page">
     <h1>RS Food</h1>
+
+    <p style="color:#e65100; font-weight:bold; font-size:17px;">
+      Orders accepted from 6:00 PM to 11:00 PM only.<br>
+      Minimum order value: ₹100
+    </p>
+
+    <a href="tel:7975067376"
+       style="display:inline-block; margin:8px; color:#e65100; font-weight:bold;">
+      Emergency Contact: 7975067376
+    </a>
+
     <h2>Menu</h2>
 
     <button onclick="window.location.href='my-order.html'">My Order</button>
@@ -515,8 +526,24 @@
       let payment = document.getElementById("payment-method").value;
       let note = document.getElementById("customer-note").value.trim();
 
+      const currentHour = new Date().getHours();
+
+      if (currentHour < 18 || currentHour >= 23) {
+        alert("Orders are accepted only from 6:00 PM to 11:00 PM.");
+        return;
+      }
+
       if (cart.length === 0) {
         alert("Please add food items first");
+        return;
+      }
+
+      const foodTotalForMinimum = cart.reduce(function(sum, item) {
+        return sum + (item.price * item.quantity);
+      }, 0);
+
+      if (foodTotalForMinimum < 100) {
+        alert("Minimum order value is ₹100. Please add more items.");
         return;
       }
 
