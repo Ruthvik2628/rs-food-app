@@ -372,6 +372,49 @@
       `;
     }
 
+    function buildStatusButtons(orderKey, trackingToken, status) {
+      const safeStatus = status || "New";
+      const buttons = function(nextStatus, label) {
+        return `<button type="button" onclick="changeStatus('${orderKey}', '${trackingToken}', '${nextStatus}')">${label}</button>`;
+      };
+
+      if (safeStatus === "New") {
+        return `<div class="status-buttons">
+          ${buttons("Accepted", "Accept")}
+          ${buttons("Rejected", "Reject")}
+        </div>`;
+      }
+
+      if (safeStatus === "Accepted") {
+        return `<p class="new">Order accepted.</p>
+          <div class="status-buttons">${buttons("Prepared", "Prepared")}</div>`;
+      }
+
+      if (safeStatus === "Prepared") {
+        return `<p class="new">Food is prepared.</p>
+          <div class="status-buttons">${buttons("Ready", "Ready")}</div>`;
+      }
+
+      if (safeStatus === "Ready") {
+        return `<p class="new">Delivery partner is on the way.</p>
+          <div class="status-buttons">${buttons("Delivered", "Delivered")}</div>`;
+      }
+
+      if (safeStatus === "Delivered") {
+        return '<p class="new">Delivered successfully.</p>';
+      }
+
+      if (safeStatus === "Rejected") {
+        return '<p class="new">Order rejected.</p>';
+      }
+
+      if (safeStatus === "Cancelled") {
+        return '<p class="new">Order cancelled by customer.</p>';
+      }
+
+      return "";
+    }
+
     function loadOrders() {
       onValue(ref(database, "orders"), function(snapshot) {
         const ordersBox = document.getElementById("orders");
@@ -417,6 +460,11 @@
             : "";
 
           const locationSection = buildLocationSection(order.location);
+          const statusButtons = buildStatusButtons(
+            orderKey,
+            order.trackingToken || "",
+            order.status
+          );
           html += `
             <div class="order-card">
               <p class="new">Status: ${escapeText(order.status)}</p>
@@ -432,11 +480,7 @@
               <p><b>Grand Total:</b> ₹${escapeText(order.grandTotal)}</p>
               <p><b>Note:</b> ${escapeText(order.note || "No note")}</p>
 
-              <div class="status-buttons">
-                <button type="button" onclick="changeStatus('${orderKey}', '${order.trackingToken}', 'Accepted')">Accept</button>
-                <button type="button" onclick="changeStatus('${orderKey}', '${order.trackingToken}', 'Ready')">Ready</button>
-                <button type="button" onclick="changeStatus('${orderKey}', '${order.trackingToken}', 'Delivered')">Delivered</button>
-              </div>
+              ${statusButtons}
             </div>
           `;
         });
