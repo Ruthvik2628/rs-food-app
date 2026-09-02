@@ -78,16 +78,22 @@
     }
 
     window.cancelOrder = async function() {
-      if (!token || !orderKey || !confirm("Do you want to cancel this order?")) return;
+      if (!token || !orderKey) return;
+
+      document.getElementById("cancel-note").textContent =
+        "Cancelling your order...";
+
       try {
         await update(ref(database), {
           ["orders/" + orderKey + "/status"]: "Cancelled",
           ["orderStatus/" + token + "/status"]: "Cancelled"
         });
+
         document.getElementById("cancel-note").textContent =
-  "Your order has been cancelled.";
+          "Your order has been cancelled.";
       } catch (error) {
-        alert("Cancellation could not be completed.");
+        document.getElementById("cancel-note").textContent =
+          "Cancellation could not be completed. Please try again.";
       }
     };
 
