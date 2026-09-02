@@ -51,9 +51,11 @@
     function customerMessage(status) {
       const messages = {
         New: "Your order has been received.",
-        Accepted: "Your food is being prepared.",
+        Accepted: "Your order has been accepted.",
+        Prepared: "Your food is being prepared.",
         Ready: "Your order is ready. Delivery partner is on the way.",
         Delivered: "Delivered successfully. Thank you for ordering from RS Food!",
+        Rejected: "Sorry, your order has been rejected.",
         Cancelled: "This order has been cancelled."
       };
       return messages[status] || "Current Status: " + status;
