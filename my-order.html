@@ -11,6 +11,8 @@
     button { background: #e65100; color: white; border: none; border-radius: 8px; padding: 12px 18px; font-size: 16px; margin: 10px 5px; }
     #cancel-button { background: #c62828; display: none; }
     #cancel-note { color: #c62828; font-weight: bold; }
+    #history-box { margin-top: 28px; padding-top: 18px; border-top: 1px solid #ddd; }
+    .history-card { text-align: left; background: #fff3e0; padding: 14px; margin: 12px 0; border-radius: 8px; }
   </style>
 </head>
 <body>
@@ -22,6 +24,10 @@
     <button id="cancel-button" onclick="cancelOrder()">Cancel Order</button>
     <p id="cancel-note"></p>
     <button onclick="window.location.href='index.html?menu=1'">Back to Menu</button>
+    <div id="history-box">
+      <h2>Delivered Order History</h2>
+      <div id="history-list">No delivered orders yet.</div>
+    </div>
   </div>
 
   <script type="module">
@@ -44,6 +50,9 @@
     const orderId = localStorage.getItem("rsFoodOrderId");
     const orderKey = localStorage.getItem("rsFoodOrderKey");
     let latestStatus = null;
+    let orderHistory = JSON.parse(
+      localStorage.getItem("rsFoodOrderHistory") || "[]"
+    );
 
     document.getElementById("order-id").textContent =
       orderId ? "Order ID: " + orderId : "No recent order found.";
@@ -59,6 +68,55 @@
         Cancelled: "This order has been cancelled."
       };
       return messages[status] || "Current Status: " + status;
+    }
+
+    function saveHistory() {
+      localStorage.setItem("rsFoodOrderHistory", JSON.stringify(orderHistory));
+    }
+
+    function renderOrderHistory() {
+      const historyList = document.getElementById("history-list");
+      const deliveredOrders = orderHistory.filter(function(order) {
+        return order.status === "Delivered";
+      });
+
+      if (deliveredOrders.length === 0) {
+        historyList.innerHTML = "No delivered orders yet.";
+        return;
+      }
+
+      historyList.innerHTML = deliveredOrders.map(function(order) {
+        const items = (order.items || []).map(function(item) {
+          return item.name + " × " + item.quantity;
+        }).join("<br>");
+        const date = order.createdAt
+          ? new Date(order.createdAt).toLocaleString("en-IN") : "";
+
+        return `<div class="history-card">
+          <b>Order ID:</b> ${order.orderId || ""}<br>
+          <b>Delivered:</b> ${date}<br>
+          <b>Items:</b><br>${items}<br><br>
+          <b>Total:</b> ₹${order.grandTotal || ""}
+        </div>`;
+      }).join("");
+    }
+
+    function watchOrderHistory() {
+      orderHistory.forEach(function(historyOrder) {
+        if (!historyOrder.trackingToken) return;
+
+        onValue(
+          ref(database, "orderStatus/" + historyOrder.trackingToken),
+          function(snapshot) {
+            const statusData = snapshot.val();
+            if (statusData && statusData.status) {
+              historyOrder.status = statusData.status;
+              saveHistory();
+              renderOrderHistory();
+            }
+          }
+        );
+      });
     }
 
     function showCancelOption() {
@@ -96,6 +154,9 @@
           "Cancellation could not be completed. Please try again.";
       }
     };
+
+    renderOrderHistory();
+    watchOrderHistory();
 
     if (!token) {
       document.getElementById("status").textContent = "Place an order first.";
