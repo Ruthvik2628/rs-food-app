@@ -310,9 +310,12 @@
           );
         }
 
-        if (newStatus === "Accepted" && orderKey === ringingOrderKey) {
-          stopOrderBell();
-        }
+       if (
+  (newStatus === "Accepted" || newStatus === "Rejected") &&
+  orderKey === ringingOrderKey
+) {
+  stopOrderBell();
+}
       } catch (error) {
         alert("Status update aagalilla. Matte try maadi.");
         console.log(error);
