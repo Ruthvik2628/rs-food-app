@@ -325,6 +325,53 @@
       startOrderBell();
     }
 
+    function getLocationCoordinates(location) {
+      const decodedLocation = decodeURIComponent(String(location || ""));
+      const match = decodedLocation.match(
+        /destination=([-0-9.]+),([-0-9.]+)/
+      );
+
+      if (!match) {
+        return null;
+      }
+
+      return {
+        latitude: Number(match[1]),
+        longitude: Number(match[2])
+      };
+    }
+
+    function buildLocationSection(location) {
+      const coordinates = getLocationCoordinates(location);
+
+      if (!coordinates) {
+        return "<p><b>Location:</b> " +
+          escapeText(location || "Not available") + "</p>";
+      }
+
+      const latitude = coordinates.latitude;
+      const longitude = coordinates.longitude;
+      const left = longitude - 0.008;
+      const right = longitude + 0.008;
+      const bottom = latitude - 0.006;
+      const top = latitude + 0.006;
+
+      const mapUrl =
+        "https://www.openstreetmap.org/export/embed.html?bbox=" +
+        left + "%2C" + bottom + "%2C" + right + "%2C" + top +
+        "&layer=mapnik&marker=" + latitude + "%2C" + longitude;
+
+      const coordinatesText = latitude + ", " + longitude;
+
+      return `
+        <p><b>Customer Map:</b></p>
+        <iframe class="customer-map" src="${mapUrl}"></iframe>
+        <p><button type="button" onclick="copyLocation('${coordinatesText}')">
+          Copy Location Coordinates
+        </button></p>
+      `;
+    }
+
     function loadOrders() {
       onValue(ref(database, "orders"), function(snapshot) {
         const ordersBox = document.getElementById("orders");
@@ -369,14 +416,7 @@
             ? new Date(order.createdAt).toLocaleString("en-IN")
             : "";
 
-          const location = escapeText(order.location);
-
-         const mapLink = location.startsWith("https://")
-  ? '<p><a href="' + location +
-    '" style="display:inline-block;background:#e65100;color:white;' +
-    'padding:13px 18px;border-radius:8px;text-decoration:none;' +
-    'font-weight:bold;">Open Customer Location in Google Maps</a></p>'
-  : "<p>Location: " + location + "</p>";
+          const locationSection = buildLocationSection(order.location);
           html += `
             <div class="order-card">
               <p class="new">Status: ${escapeText(order.status)}</p>
@@ -384,7 +424,7 @@
               <p><b>Time:</b> ${escapeText(time)}</p>
               <p><b>Customer:</b> ${escapeText(order.customerName)}</p>
               <p><b>Phone:</b> ${escapeText(order.phone)}</p>
-              ${mapLink}
+              ${locationSection}
               <p><b>Payment:</b> ${escapeText(order.payment)}</p>
               <p><b>Items:</b><br>${items}</p>
               <p><b>Food Total:</b> ₹${escapeText(order.foodTotal)}</p>
