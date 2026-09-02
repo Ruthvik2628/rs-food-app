@@ -84,7 +84,8 @@
           ["orders/" + orderKey + "/status"]: "Cancelled",
           ["orderStatus/" + token + "/status"]: "Cancelled"
         });
-        alert("Your order has been cancelled.");
+        document.getElementById("cancel-note").textContent =
+  "Your order has been cancelled.";
       } catch (error) {
         alert("Cancellation could not be completed.");
       }
