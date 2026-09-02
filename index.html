@@ -204,7 +204,7 @@
     <h1>RS Food</h1>
 
     <p style="color:#e65100; font-weight:bold; font-size:17px;">
-      Orders accepted from 6:00 PM to 11:00 PM only.<br>
+      Orders accepted from 12:00 PM to 11:00 PM only.<br>
       Minimum order value: ₹100
     </p>
 
@@ -528,8 +528,8 @@
 
       const currentHour = new Date().getHours();
 
-      if (currentHour < 18 || currentHour >= 23) {
-        alert("Orders are accepted only from 6:00 PM to 11:00 PM.");
+      if (currentHour < 12 || currentHour >= 23) {
+        alert("Orders are accepted only from 12:00 PM to 11:00 PM.");
         return;
       }
 
